@@ -51,7 +51,7 @@ parser.add_argument('--save_freq', type=int, default=1, help='the frequency of s
 # parse arguments, set seeds
 args = parser.parse_args()
 torch.manual_seed(args.seed)
-torch.cuda.manual_seed(args.seed)
+#torch.cuda.manual_seed(args.seed)
 os.makedirs(args.logdir, exist_ok=True)
 
 # create summary logger
@@ -96,7 +96,7 @@ TestImgLoadermiddlebury = DataLoader(middleburyloadertest, 1, shuffle=False, num
 # model, optimizer
 model = __models__[args.model](args.maxdisp)
 model = nn.DataParallel(model)
-model.cuda()
+#model.cuda()
 optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
 
 # load parameters
@@ -115,7 +115,7 @@ if args.resume:
 elif args.loadckpt:
     # load the checkpoint file specified by args.loadckpt
     print("loading model {}".format(args.loadckpt))
-    state_dict = torch.load(args.loadckpt)
+    state_dict = torch.load(args.loadckpt, map_location=torch.device('cpu'))
     model.load_state_dict(state_dict['model'])
 print("start at epoch {}".format(start_epoch))
 
@@ -245,9 +245,9 @@ def train_sample(sample, compute_metrics=False):
     model.train()
 
     imgL, imgR, disp_gt = sample['left'], sample['right'], sample['disparity']
-    imgL = imgL.cuda()
-    imgR = imgR.cuda()
-    disp_gt = disp_gt.cuda()
+    #imgL = imgL.cuda()
+    #imgR = imgR.cuda()
+    #disp_gt = disp_gt.cuda()
 
     optimizer.zero_grad()
 
@@ -278,10 +278,10 @@ def test_sample(sample, dataset = 'kitti', compute_metrics=True):
 
     imgL, imgR, disp_gt = sample['left'], sample['right'], sample['disparity']
     toppad, rightpad = sample['top_pad'], sample['right_pad']
-    # print(toppad)
-    imgL = imgL.cuda()
-    imgR = imgR.cuda()
-    disp_gt = disp_gt.cuda()
+    #print(toppad)
+    imgL = torch.from_numpy(np.expand_dims(imgL, axis=0))
+    imgR = torch.from_numpy(np.expand_dims(imgR, axis=0))
+    disp_gt = torch.from_numpy(np.expand_dims(disp_gt, axis=0))
 
     disp_ests, pred3_s3, pred3_s4  = model(imgL, imgR)
 
@@ -309,7 +309,7 @@ def test_sample(sample, dataset = 'kitti', compute_metrics=True):
     loss = model_loss(disp_ests, disp_gt, mask)
 
     scalar_outputs = {"loss": loss}
-    image_outputs = {"disp_est": disp_ests, "disp_gt": disp_gt, "imgL": imgL, "imgR": imgR}
+    image_outputs = {"disp_est": disp_ests[0], "disp_gt": disp_gt, "imgL": imgL, "imgR": imgR}
 
     scalar_outputs["D1"] = [D1_metric(disp_est, disp_gt, mask) for disp_est in disp_ests]
     scalar_outputs["D1_preds3"] = [D1_metric(pred, disp_gt, mask) for pred in pred3_s3]
@@ -324,11 +324,20 @@ def test_sample(sample, dataset = 'kitti', compute_metrics=True):
     scalar_outputs["Thres3"] = [Thres_metric(disp_est, disp_gt, mask, 3.0) for disp_est in disp_ests]
 
 
-    if compute_metrics:
-        image_outputs["errormap"] = [disp_error_image_func()(disp_est, disp_gt) for disp_est in disp_ests]
+    #if compute_metrics:
+    #    image_outputs["errormap"] = [disp_error_image_func()(disp_est, disp_gt) for disp_est in disp_ests]
 
     return tensor2float(loss), tensor2float(scalar_outputs), image_outputs
 
 
 if __name__ == '__main__':
-    train()
+    import cv2
+    loss, _, images = test_sample(kittiloadertest[0])
+    print(f"Loss: {loss}")
+
+    disp = images['disp_est'].numpy().squeeze()
+    disp_gt = images['disp_gt'].numpy().squeeze()
+
+    cv2.imwrite("./tmp/dmap.png", cv2.applyColorMap(disp.astype(np.uint8), cv2.COLORMAP_JET))
+    cv2.imwrite("./tmp/dmap_gt.png", cv2.applyColorMap(disp_gt.astype(np.uint8), cv2.COLORMAP_JET))
+

@@ -291,10 +291,10 @@ class UniformSampler(nn.Module):
             :sampled_disparities: Uniformly generated disparity samples from the input search range.
         """
 
-        device = min_disparity.get_device()
+        #device = min_disparity.get_device()
 
         multiplier = (max_disparity - min_disparity) / (number_of_samples + 1)   # B,1,H,W
-        range_multiplier = torch.arange(1.0, number_of_samples + 1, 1, device=device).view(number_of_samples, 1, 1)  #(number_of_samples, 1, 1)
+        range_multiplier = torch.arange(1.0, number_of_samples + 1, 1).view(number_of_samples, 1, 1)  #(number_of_samples, 1, 1)
         sampled_disparities = min_disparity + multiplier * range_multiplier
 
         return sampled_disparities
@@ -321,8 +321,8 @@ class SpatialTransformer(nn.Module):
             :left_feature_map: expanded left image features.
         """
 
-        device = left_input.get_device()
-        left_y_coordinate = torch.arange(0.0, left_input.size()[3], device=device).repeat(left_input.size()[2])
+        #device = left_input.get_device()
+        left_y_coordinate = torch.arange(0.0, left_input.size()[3]).repeat(left_input.size()[2])
         left_y_coordinate = left_y_coordinate.view(left_input.size()[2], left_input.size()[3])
         left_y_coordinate = torch.clamp(left_y_coordinate, min=0, max=left_input.size()[3] - 1)
         left_y_coordinate = left_y_coordinate.expand(left_input.size()[0], -1, -1)
