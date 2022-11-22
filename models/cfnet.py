@@ -4,8 +4,9 @@ import torch.nn as nn
 import torch.utils.data
 from torch.autograd import Variable
 import torch.nn.functional as F
-from models.submodule import *
 import math
+import importlib
+submodule = importlib.import_module("thirdparty.CFNet.models.submodule")
 
 
 class feature_extraction(nn.Module):
@@ -14,101 +15,101 @@ class feature_extraction(nn.Module):
         self.concat_feature = concat_feature
 
         self.inplanes = 32
-        self.firstconv = nn.Sequential(convbn(3, 32, 3, 2, 1, 1),
-                                       Mish(),
-                                       convbn(32, 32, 3, 1, 1, 1),
-                                       Mish(),
-                                       convbn(32, 32, 3, 1, 1, 1),
-                                       Mish())
+        self.firstconv = nn.Sequential(submodule.convbn(3, 32, 3, 2, 1, 1),
+                                       submodule.Mish(),
+                                       submodule.convbn(32, 32, 3, 1, 1, 1),
+                                       submodule.Mish(),
+                                       submodule.convbn(32, 32, 3, 1, 1, 1),
+                                       submodule.Mish())
 
-        # self.layer1 = self._make_layer(BasicBlock, 32, 3, 1, 1, 1)
-        self.layer2 = self._make_layer(BasicBlock, 64, 1, 1, 1, 1)
-        self.layer3 = self._make_layer(BasicBlock, 128, 1, 2, 1, 1)
-        self.layer4 = self._make_layer(BasicBlock, 192, 1, 2, 1, 1)
-        self.layer5 = self._make_layer(BasicBlock, 256, 1, 2, 1, 1)
-        self.layer6 = self._make_layer(BasicBlock, 512, 1, 2, 1, 1)
-        self.pyramid_pooling = pyramidPooling(512, None, fusion_mode='sum', model_name='icnet')
+        # self.layer1 = self._make_layer(submodule.BasicBlock, 32, 3, 1, 1, 1)
+        self.layer2 = self._make_layer(submodule.BasicBlock, 64, 1, 1, 1, 1)
+        self.layer3 = self._make_layer(submodule.BasicBlock, 128, 1, 2, 1, 1)
+        self.layer4 = self._make_layer(submodule.BasicBlock, 192, 1, 2, 1, 1)
+        self.layer5 = self._make_layer(submodule.BasicBlock, 256, 1, 2, 1, 1)
+        self.layer6 = self._make_layer(submodule.BasicBlock, 512, 1, 2, 1, 1)
+        self.pyramid_pooling = submodule.pyramidPooling(512, None, fusion_mode='sum', model_name='icnet')
         self.upconv6 = nn.Sequential(nn.Upsample(scale_factor=2),
-                                     convbn(512, 256, 3, 1, 1, 1),
-                                     Mish())
-        self.iconv5 = nn.Sequential(convbn(512, 256, 3, 1, 1, 1),
-                                    Mish())
+                                     submodule.convbn(512, 256, 3, 1, 1, 1),
+                                     submodule.Mish())
+        self.iconv5 = nn.Sequential(submodule.convbn(512, 256, 3, 1, 1, 1),
+                                    submodule.Mish())
         self.upconv5 = nn.Sequential(nn.Upsample(scale_factor=2),
-                                     convbn(256, 192, 3, 1, 1, 1),
-                                     Mish())
-        self.iconv4 = nn.Sequential(convbn(384, 192, 3, 1, 1, 1),
-                                    Mish())
+                                     submodule.convbn(256, 192, 3, 1, 1, 1),
+                                     submodule.Mish())
+        self.iconv4 = nn.Sequential(submodule.convbn(384, 192, 3, 1, 1, 1),
+                                    submodule.Mish())
         self.upconv4 = nn.Sequential(nn.Upsample(scale_factor=2),
-                                     convbn(192, 128, 3, 1, 1, 1),
-                                     Mish())
-        self.iconv3 = nn.Sequential(convbn(256, 128, 3, 1, 1, 1),
-                                    Mish())
+                                     submodule.convbn(192, 128, 3, 1, 1, 1),
+                                     submodule.Mish())
+        self.iconv3 = nn.Sequential(submodule.convbn(256, 128, 3, 1, 1, 1),
+                                    submodule.Mish())
         self.upconv3 = nn.Sequential(nn.Upsample(scale_factor=2),
-                                     convbn(128, 64, 3, 1, 1, 1),
-                                     Mish())
-        self.iconv2 = nn.Sequential(convbn(128, 64, 3, 1, 1, 1),
-                                    Mish())
+                                     submodule.convbn(128, 64, 3, 1, 1, 1),
+                                     submodule.Mish())
+        self.iconv2 = nn.Sequential(submodule.convbn(128, 64, 3, 1, 1, 1),
+                                    submodule.Mish())
         # self.upconv2 = nn.Sequential(nn.Upsample(scale_factor=2),
-        #                              convbn(64, 32, 3, 1, 1, 1),
+        #                              submodule.convbn(64, 32, 3, 1, 1, 1),
         #                              nn.ReLU(inplace=True))
 
-        # self.gw1 = nn.Sequential(convbn(32, 40, 3, 1, 1, 1),
+        # self.gw1 = nn.Sequential(submodule.convbn(32, 40, 3, 1, 1, 1),
         #                          nn.ReLU(inplace=True),
         #                          nn.Conv2d(40, 40, kernel_size=1, padding=0, stride=1,
         #                                    bias=False))
 
-        self.gw2 = nn.Sequential(convbn(64, 80, 3, 1, 1, 1),
-                                          Mish(),
+        self.gw2 = nn.Sequential(submodule.convbn(64, 80, 3, 1, 1, 1),
+                                          submodule.Mish(),
                                           nn.Conv2d(80, 80, kernel_size=1, padding=0, stride=1,
                                                     bias=False))
 
-        self.gw3 = nn.Sequential(convbn(128, 160, 3, 1, 1, 1),
-                                 Mish(),
+        self.gw3 = nn.Sequential(submodule.convbn(128, 160, 3, 1, 1, 1),
+                                 submodule.Mish(),
                                  nn.Conv2d(160, 160, kernel_size=1, padding=0, stride=1,
                                            bias=False))
 
-        self.gw4 = nn.Sequential(convbn(192, 160, 3, 1, 1, 1),
-                                 Mish(),
+        self.gw4 = nn.Sequential(submodule.convbn(192, 160, 3, 1, 1, 1),
+                                 submodule.Mish(),
                                  nn.Conv2d(160, 160, kernel_size=1, padding=0, stride=1,
                                            bias=False))
 
-        self.gw5 = nn.Sequential(convbn(256, 320, 3, 1, 1, 1),
-                                 Mish(),
+        self.gw5 = nn.Sequential(submodule.convbn(256, 320, 3, 1, 1, 1),
+                                 submodule.Mish(),
                                  nn.Conv2d(320, 320, kernel_size=1, padding=0, stride=1,
                                            bias=False))
 
-        self.gw6 = nn.Sequential(convbn(512, 320, 3, 1, 1, 1),
-                                 Mish(),
+        self.gw6 = nn.Sequential(submodule.convbn(512, 320, 3, 1, 1, 1),
+                                 submodule.Mish(),
                                  nn.Conv2d(320, 320, kernel_size=1, padding=0, stride=1,
                                            bias=False))
 
         if self.concat_feature:
-            # self.concat1 = nn.Sequential(convbn(32, 16, 3, 1, 1, 1),
+            # self.concat1 = nn.Sequential(submodule.convbn(32, 16, 3, 1, 1, 1),
             #                              nn.ReLU(inplace=True),
             #                              nn.Conv2d(16, concat_feature_channel // 4, kernel_size=1, padding=0, stride=1,
             #                                        bias=False))
 
-            self.concat2 = nn.Sequential(convbn(64, 32, 3, 1, 1, 1),
-                                          Mish(),
+            self.concat2 = nn.Sequential(submodule.convbn(64, 32, 3, 1, 1, 1),
+                                          submodule.Mish(),
                                           nn.Conv2d(32, concat_feature_channel // 2, kernel_size=1, padding=0, stride=1,
                                                     bias=False))
-            self.concat3 = nn.Sequential(convbn(128, 128, 3, 1, 1, 1),
-                                          Mish(),
+            self.concat3 = nn.Sequential(submodule.convbn(128, 128, 3, 1, 1, 1),
+                                          submodule.Mish(),
                                           nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
                                                     bias=False))
 
-            self.concat4 = nn.Sequential(convbn(192, 128, 3, 1, 1, 1),
-                                          Mish(),
+            self.concat4 = nn.Sequential(submodule.convbn(192, 128, 3, 1, 1, 1),
+                                          submodule.Mish(),
                                           nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
                                                     bias=False))
 
-            self.concat5 = nn.Sequential(convbn(256, 128, 3, 1, 1, 1),
-                                         Mish(),
+            self.concat5 = nn.Sequential(submodule.convbn(256, 128, 3, 1, 1, 1),
+                                         submodule.Mish(),
                                          nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
                                                    bias=False))
 
-            self.concat6 = nn.Sequential(convbn(512, 128, 3, 1, 1, 1),
-                                         Mish(),
+            self.concat6 = nn.Sequential(submodule.convbn(512, 128, 3, 1, 1, 1),
+                                         submodule.Mish(),
                                          nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
                                                    bias=False))
 
@@ -181,14 +182,14 @@ class hourglassup(nn.Module):
         self.conv1 = nn.Conv3d(in_channels, in_channels * 2, kernel_size=3, stride=2,
                                    padding=1, bias=False)
 
-        self.conv2 = nn.Sequential(convbn_3d(in_channels * 2, in_channels * 2, 3, 1, 1),
-                                   Mish())
+        self.conv2 = nn.Sequential(submodule.convbn_3d(in_channels * 2, in_channels * 2, 3, 1, 1),
+                                   submodule.Mish())
 
         self.conv3 = nn.Conv3d(in_channels * 2, in_channels * 4, kernel_size=3, stride=2,
                                padding=1, bias=False)
 
-        self.conv4 = nn.Sequential(convbn_3d(in_channels * 4, in_channels * 4, 3, 1, 1),
-                                   Mish())
+        self.conv4 = nn.Sequential(submodule.convbn_3d(in_channels * 4, in_channels * 4, 3, 1, 1),
+                                   submodule.Mish())
 
         self.conv8 = nn.Sequential(
             nn.ConvTranspose3d(in_channels * 4, in_channels * 2, 3, padding=1, output_padding=1, stride=2, bias=False),
@@ -198,16 +199,16 @@ class hourglassup(nn.Module):
             nn.ConvTranspose3d(in_channels * 2, in_channels, 3, padding=1, output_padding=1, stride=2, bias=False),
             nn.BatchNorm3d(in_channels))
 
-        self.combine1 = nn.Sequential(convbn_3d(in_channels * 4, in_channels * 2, 3, 1, 1),
-                                   Mish())
-        self.combine2 = nn.Sequential(convbn_3d(in_channels * 6, in_channels * 4, 3, 1, 1),
-                                      Mish())
-        self.combine3 = nn.Sequential(convbn_3d(in_channels * 6, in_channels * 4, 3, 1, 1),
-                                      Mish())
+        self.combine1 = nn.Sequential(submodule.convbn_3d(in_channels * 4, in_channels * 2, 3, 1, 1),
+                                   submodule.Mish())
+        self.combine2 = nn.Sequential(submodule.convbn_3d(in_channels * 6, in_channels * 4, 3, 1, 1),
+                                      submodule.Mish())
+        self.combine3 = nn.Sequential(submodule.convbn_3d(in_channels * 6, in_channels * 4, 3, 1, 1),
+                                      submodule.Mish())
 
-        self.redir1 = convbn_3d(in_channels, in_channels, kernel_size=1, stride=1, pad=0)
-        self.redir2 = convbn_3d(in_channels * 2, in_channels * 2, kernel_size=1, stride=1, pad=0)
-        self.redir3 = convbn_3d(in_channels * 4, in_channels * 4, kernel_size=1, stride=1, pad=0)
+        self.redir1 = submodule.convbn_3d(in_channels, in_channels, kernel_size=1, stride=1, pad=0)
+        self.redir2 = submodule.convbn_3d(in_channels * 2, in_channels * 2, kernel_size=1, stride=1, pad=0)
+        self.redir3 = submodule.convbn_3d(in_channels * 4, in_channels * 4, kernel_size=1, stride=1, pad=0)
 
 
     def forward(self, x, feature4, feature5):
@@ -221,8 +222,8 @@ class hourglassup(nn.Module):
         conv3 = self.combine2(conv3)   #1/16
         conv4 = self.conv4(conv3)      #1/16
 
-        conv8 = FMish(self.conv8(conv4) + self.redir2(conv2))
-        conv9 = FMish(self.conv9(conv8) + self.redir1(x))
+        conv8 = submodule.FMish(self.conv8(conv4) + self.redir2(conv2))
+        conv9 = submodule.FMish(self.conv9(conv8) + self.redir1(x))
 
 
         return conv9
@@ -231,17 +232,17 @@ class hourglass(nn.Module):
     def __init__(self, in_channels):
         super(hourglass, self).__init__()
 
-        self.conv1 = nn.Sequential(convbn_3d(in_channels, in_channels * 2, 3, 2, 1),
-                                   Mish())
+        self.conv1 = nn.Sequential(submodule.convbn_3d(in_channels, in_channels * 2, 3, 2, 1),
+                                   submodule.Mish())
 
-        self.conv2 = nn.Sequential(convbn_3d(in_channels * 2, in_channels * 2, 3, 1, 1),
-                                   Mish())
+        self.conv2 = nn.Sequential(submodule.convbn_3d(in_channels * 2, in_channels * 2, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.conv3 = nn.Sequential(convbn_3d(in_channels * 2, in_channels * 4, 3, 2, 1),
-                                   Mish())
+        self.conv3 = nn.Sequential(submodule.convbn_3d(in_channels * 2, in_channels * 4, 3, 2, 1),
+                                   submodule.Mish())
 
-        self.conv4 = nn.Sequential(convbn_3d(in_channels * 4, in_channels * 4, 3, 1, 1),
-                                   Mish())
+        self.conv4 = nn.Sequential(submodule.convbn_3d(in_channels * 4, in_channels * 4, 3, 1, 1),
+                                   submodule.Mish())
 
         self.conv5 = nn.Sequential(
             nn.ConvTranspose3d(in_channels * 4, in_channels * 2, 3, padding=1, output_padding=1, stride=2, bias=False),
@@ -251,8 +252,8 @@ class hourglass(nn.Module):
             nn.ConvTranspose3d(in_channels * 2, in_channels, 3, padding=1, output_padding=1, stride=2, bias=False),
             nn.BatchNorm3d(in_channels))
 
-        self.redir1 = convbn_3d(in_channels, in_channels, kernel_size=1, stride=1, pad=0)
-        self.redir2 = convbn_3d(in_channels * 2, in_channels * 2, kernel_size=1, stride=1, pad=0)
+        self.redir1 = submodule.convbn_3d(in_channels, in_channels, kernel_size=1, stride=1, pad=0)
+        self.redir2 = submodule.convbn_3d(in_channels * 2, in_channels * 2, kernel_size=1, stride=1, pad=0)
 
     def forward(self, x):
         conv1 = self.conv1(x)
@@ -264,8 +265,8 @@ class hourglass(nn.Module):
         # conv5 = F.relu(self.conv5(conv4) + self.redir2(conv2), inplace=True)
         # conv6 = F.relu(self.conv6(conv5) + self.redir1(x), inplace=True)
 
-        conv5 = FMish(self.conv5(conv4) + self.redir2(conv2))
-        conv6 = FMish(self.conv6(conv5) + self.redir1(x))
+        conv5 = submodule.FMish(self.conv5(conv4) + self.redir2(conv2))
+        conv6 = submodule.FMish(self.conv6(conv5) + self.redir1(x))
 
         return conv6
 
@@ -281,8 +282,8 @@ class cfnet(nn.Module):
         self.sample_count_s2 = 10
         self.sample_count_s3 = 14
         self.num_groups = 40
-        self.uniform_sampler = UniformSampler()
-        self.spatial_transformer = SpatialTransformer()
+        self.uniform_sampler = submodule.UniformSampler()
+        self.spatial_transformer = submodule.SpatialTransformer()
 
 
         if self.use_concat_volume:
@@ -293,33 +294,33 @@ class cfnet(nn.Module):
             self.concat_channels = 0
             self.feature_extraction = feature_extraction(concat_feature=False)
 
-        self.dres0 = nn.Sequential(convbn_3d(self.num_groups + self.concat_channels*2, 32, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(32, 32, 3, 1, 1),
-                                   Mish())
+        self.dres0 = nn.Sequential(submodule.convbn_3d(self.num_groups + self.concat_channels*2, 32, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(32, 32, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.dres1 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(32, 32, 3, 1, 1))
+        self.dres1 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(32, 32, 3, 1, 1))
 
 
-        self.dres0_5 = nn.Sequential(convbn_3d(self.num_groups + self.concat_channels*2, 64, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(64, 64, 3, 1, 1),
-                                   Mish())
+        self.dres0_5 = nn.Sequential(submodule.convbn_3d(self.num_groups + self.concat_channels*2, 64, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(64, 64, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.dres1_5 = nn.Sequential(convbn_3d(64, 64, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(64, 64, 3, 1, 1))
+        self.dres1_5 = nn.Sequential(submodule.convbn_3d(64, 64, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(64, 64, 3, 1, 1))
 
-        self.dres0_6 = nn.Sequential(convbn_3d(self.num_groups + self.concat_channels*2, 64, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(64, 64, 3, 1, 1),
-                                   Mish())
+        self.dres0_6 = nn.Sequential(submodule.convbn_3d(self.num_groups + self.concat_channels*2, 64, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(64, 64, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.dres1_6 = nn.Sequential(convbn_3d(64, 64, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(64, 64, 3, 1, 1))
+        self.dres1_6 = nn.Sequential(submodule.convbn_3d(64, 64, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(64, 64, 3, 1, 1))
 
         self.combine1 = hourglassup(32)
 
@@ -329,41 +330,41 @@ class cfnet(nn.Module):
 
         # self.dres4 = hourglass(32)
 
-        self.confidence0_s3 = nn.Sequential(convbn_3d(self.num_groups + self.concat_channels*2 + 1 , 32, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(32, 32, 3, 1, 1),
-                                   Mish())
+        self.confidence0_s3 = nn.Sequential(submodule.convbn_3d(self.num_groups + self.concat_channels*2 + 1 , 32, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(32, 32, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.confidence1_s3 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(32, 32, 3, 1, 1))
+        self.confidence1_s3 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(32, 32, 3, 1, 1))
 
         self.confidence2_s3 = hourglass(32)
 
         self.confidence3_s3 = hourglass(32)
 
-        self.confidence0_s2 = nn.Sequential(convbn_3d(self.num_groups//2 + self.concat_channels + 1, 16, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(16, 16, 3, 1, 1),
-                                   Mish())
+        self.confidence0_s2 = nn.Sequential(submodule.convbn_3d(self.num_groups//2 + self.concat_channels + 1, 16, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(16, 16, 3, 1, 1),
+                                   submodule.Mish())
 
-        self.confidence1_s2 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
-                                   Mish(),
-                                   convbn_3d(16, 16, 3, 1, 1))
+        self.confidence1_s2 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
+                                   submodule.Mish(),
+                                   submodule.convbn_3d(16, 16, 3, 1, 1))
 
         self.confidence2_s2 = hourglass(16)
 
         self.confidence3_s2 = hourglass(16)
 
 
-        # self.confidence0_s1 = nn.Sequential(convbn_3d(self.num_groups // 4 + self.concat_channels // 2 + 1, 16, 3, 1, 1),
+        # self.confidence0_s1 = nn.Sequential(submodule.convbn_3d(self.num_groups // 4 + self.concat_channels // 2 + 1, 16, 3, 1, 1),
         #                                     nn.ReLU(inplace=True),
-        #                                     convbn_3d(16, 16, 3, 1, 1),
+        #                                     submodule.convbn_3d(16, 16, 3, 1, 1),
         #                                     nn.ReLU(inplace=True))
         #
-        # self.confidence1_s1 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
+        # self.confidence1_s1 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
         #                                     nn.ReLU(inplace=True),
-        #                                     convbn_3d(16, 16, 3, 1, 1))
+        #                                     submodule.convbn_3d(16, 16, 3, 1, 1))
         #
         # self.confidence2_s1 = hourglass(16)
 
@@ -371,45 +372,45 @@ class cfnet(nn.Module):
         #
         # self.confidence4 = hourglass(32)
 
-        self.confidence_classif0_s3 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                                    Mish(),
+        self.confidence_classif0_s3 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                                    submodule.Mish(),
                                                     nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.confidence_classif1_s3 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                      Mish(),
+        self.confidence_classif1_s3 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                      submodule.Mish(),
                                       nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.confidence_classifmid_s3 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                                    Mish(),
+        self.confidence_classifmid_s3 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                                    submodule.Mish(),
                                                     nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.confidence_classif0_s2 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
-                                                    Mish(),
+        self.confidence_classif0_s2 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
+                                                    submodule.Mish(),
                                                     nn.Conv3d(16, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
 
-        self.confidence_classif1_s2 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
-                                                    Mish(),
+        self.confidence_classif1_s2 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
+                                                    submodule.Mish(),
                                                     nn.Conv3d(16, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.confidence_classifmid_s2 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
-                                                    Mish(),
+        self.confidence_classifmid_s2 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
+                                                    submodule.Mish(),
                                                     nn.Conv3d(16, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        # self.confidence_classif1_s1 = nn.Sequential(convbn_3d(16, 16, 3, 1, 1),
+        # self.confidence_classif1_s1 = nn.Sequential(submodule.convbn_3d(16, 16, 3, 1, 1),
         #                                             nn.ReLU(inplace=True),
         #                                             nn.Conv3d(16, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.classif0 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                      Mish(),
+        self.classif0 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                      submodule.Mish(),
                                       nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.classif1 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                      Mish(),
+        self.classif1 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                      submodule.Mish(),
                                       nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-        self.classif2 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),
-                                      Mish(),
+        self.classif2 = nn.Sequential(submodule.convbn_3d(32, 32, 3, 1, 1),
+                                      submodule.Mish(),
                                       nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
         self.gamma_s3 = nn.Parameter(torch.zeros(1))
@@ -490,7 +491,7 @@ class cfnet(nn.Module):
         if model == 'concat':
              cost_volume = torch.cat((left_feature_map, right_feature_map), dim=1)
         else:
-             cost_volume = groupwise_correlation_4D(left_feature_map, right_feature_map, num_groups)
+             cost_volume = submodule.groupwise_correlation_4D(left_feature_map, right_feature_map, num_groups)
 
         return cost_volume, disparity_samples
 
@@ -498,20 +499,20 @@ class cfnet(nn.Module):
         features_left = self.feature_extraction(left)
         features_right = self.feature_extraction(right)
 
-        gwc_volume4 = build_gwc_volume(features_left["gw4"], features_right["gw4"], self.maxdisp // 8,
+        gwc_volume4 = submodule.build_gwc_volume(features_left["gw4"], features_right["gw4"], self.maxdisp // 8,
                                        self.num_groups)
 
-        gwc_volume5 = build_gwc_volume(features_left["gw5"], features_right["gw5"], self.maxdisp // 16,
+        gwc_volume5 = submodule.build_gwc_volume(features_left["gw5"], features_right["gw5"], self.maxdisp // 16,
                                        self.num_groups)
 
-        gwc_volume6 = build_gwc_volume(features_left["gw6"], features_right["gw6"], self.maxdisp // 32,
+        gwc_volume6 = submodule.build_gwc_volume(features_left["gw6"], features_right["gw6"], self.maxdisp // 32,
                                        self.num_groups)
         if self.use_concat_volume:
-            concat_volume4 = build_concat_volume(features_left["concat_feature4"], features_right["concat_feature4"],
+            concat_volume4 = submodule.build_concat_volume(features_left["concat_feature4"], features_right["concat_feature4"],
                                                  self.maxdisp // 8)
-            concat_volume5 = build_concat_volume(features_left["concat_feature5"], features_right["concat_feature5"],
+            concat_volume5 = submodule.build_concat_volume(features_left["concat_feature5"], features_right["concat_feature5"],
                                                  self.maxdisp // 16)
-            concat_volume6 = build_concat_volume(features_left["concat_feature6"], features_right["concat_feature6"],
+            concat_volume6 = submodule.build_concat_volume(features_left["concat_feature6"], features_right["concat_feature6"],
                                                  self.maxdisp // 32)
             volume4 = torch.cat((gwc_volume4, concat_volume4), 1)
             volume5 = torch.cat((gwc_volume5, concat_volume5), 1)
@@ -534,9 +535,9 @@ class cfnet(nn.Module):
         cost2_s4 = self.classif2(out2_4)
         cost2_s4 = torch.squeeze(cost2_s4, 1)
         pred2_possibility_s4 = F.softmax(cost2_s4, dim=1)
-        pred2_s4 = disparity_regression(pred2_possibility_s4, self.maxdisp // 8).unsqueeze(1)
+        pred2_s4 = submodule.disparity_regression(pred2_possibility_s4, self.maxdisp // 8).unsqueeze(1)
         pred2_s4_cur = pred2_s4.detach()
-        pred2_v_s4 = disparity_variance(pred2_possibility_s4, self.maxdisp // 8, pred2_s4_cur)  # get the variance
+        pred2_v_s4 = submodule.disparity_variance(pred2_possibility_s4, self.maxdisp // 8, pred2_s4_cur)  # get the variance
         pred2_v_s4 = pred2_v_s4.sqrt()
         mindisparity_s3 = pred2_s4_cur - (self.gamma_s3 + 1) * pred2_v_s4 - self.beta_s3
         maxdisparity_s3 = pred2_s4_cur + (self.gamma_s3 + 1) * pred2_v_s4 + self.beta_s3
@@ -564,7 +565,7 @@ class cfnet(nn.Module):
         cost1_s3_possibility = F.softmax(cost1_s3, dim=1)
         pred1_s3 = torch.sum(cost1_s3_possibility * disparity_samples_s3, dim=1, keepdim=True)
         pred1_s3_cur = pred1_s3.detach()
-        pred1_v_s3 = disparity_variance_confidence(cost1_s3_possibility, disparity_samples_s3, pred1_s3_cur)
+        pred1_v_s3 = submodule.disparity_variance_confidence(cost1_s3_possibility, disparity_samples_s3, pred1_s3_cur)
         pred1_v_s3 = pred1_v_s3.sqrt()
         mindisparity_s2 = pred1_s3_cur - (self.gamma_s2 + 1) * pred1_v_s3 - self.beta_s2
         maxdisparity_s2 = pred1_s3_cur + (self.gamma_s2 + 1) * pred1_v_s3 + self.beta_s2
@@ -604,12 +605,12 @@ class cfnet(nn.Module):
             cost0_4 = F.upsample(cost0_4, [self.maxdisp, left.size()[2], left.size()[3]], mode='trilinear', align_corners=True)
             cost0_4 = torch.squeeze(cost0_4, 1)
             pred0_4 = F.softmax(cost0_4, dim=1)
-            pred0_4 = disparity_regression(pred0_4, self.maxdisp)
+            pred0_4 = submodule.disparity_regression(pred0_4, self.maxdisp)
 
             cost1_4 = F.upsample(cost1_4, [self.maxdisp, left.size()[2], left.size()[3]], mode='trilinear', align_corners=True)
             cost1_4 = torch.squeeze(cost1_4, 1)
             pred1_4 = F.softmax(cost1_4, dim=1)
-            pred1_4 = disparity_regression(pred1_4, self.maxdisp)
+            pred1_4 = submodule.disparity_regression(pred1_4, self.maxdisp)
 
             pred2_s4 = F.upsample(pred2_s4 * 8, [left.size()[2], left.size()[3]], mode='bilinear', align_corners=True)
             pred2_s4 = torch.squeeze(pred2_s4, 1)
