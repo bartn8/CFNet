@@ -46,6 +46,7 @@ class CFNetBlock:
     def dispose(self):
         if not self.disposed:
             del self.model
+            torch.cuda.empty_cache()
             self.disposed = True
 
     def _conv_image(self, img):
