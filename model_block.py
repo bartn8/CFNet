@@ -35,9 +35,7 @@ class CFNetBlock:
         self.log(f"Building Model...")
         self.model = cfnet.CFNet(self.max_disparity)
         self.model = torch.nn.DataParallel(self.model)  
-        if torch.cuda.is_available():
-            self.model.cuda()
-
+        self.model.to(self.device)
 
     def load(self, model_path):
         # load the checkpoint file specified by model_path.loadckpt
