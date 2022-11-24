@@ -271,7 +271,7 @@ class hourglass(nn.Module):
         return conv6
 
 class cfnet(nn.Module):
-    def __init__(self, maxdisp, use_concat_volume=False):
+    def __init__(self, maxdisp, device, use_concat_volume=False):
         super(cfnet, self).__init__()
         self.maxdisp = maxdisp
         self.use_concat_volume = use_concat_volume
@@ -282,8 +282,8 @@ class cfnet(nn.Module):
         self.sample_count_s2 = 10
         self.sample_count_s3 = 14
         self.num_groups = 40
-        self.uniform_sampler = submodule.UniformSampler()
-        self.spatial_transformer = submodule.SpatialTransformer()
+        self.uniform_sampler = submodule.UniformSampler(device)
+        self.spatial_transformer = submodule.SpatialTransformer(device)
 
 
         if self.use_concat_volume:
@@ -665,5 +665,5 @@ class cfnet(nn.Module):
             return [pred1_s2], [pred1_s3_up], [pred2_s4]
 
 
-def CFNet(d):
-    return cfnet(d, use_concat_volume=True)
+def CFNet(d, device):
+    return cfnet(d, device, use_concat_volume=True)

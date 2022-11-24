@@ -33,9 +33,8 @@ class CFNetBlock:
             return
 
         self.log(f"Building Model...")
-        self.model = cfnet.CFNet(self.max_disparity)
-        self.model = torch.nn.DataParallel(self.model)  
-        self.model.to(self.device)
+        self.model = cfnet.CFNet(self.max_disparity, torch.device(self.device))
+        self.model = torch.nn.DataParallel(self.model).to(self.device)
 
     def load(self, model_path):
         # load the checkpoint file specified by model_path.loadckpt
@@ -77,4 +76,4 @@ class CFNetBlock:
         self.model.eval()
         with torch.no_grad():
             disp_ests, _, _  = self.model(left_vpp, right_vpp)
-            return disp_ests[0][:, toppad:, :-rightpad].numpy().squeeze()
+            return disp_ests[0][:, toppad:, :-rightpad].cpu().numpy().squeeze()
