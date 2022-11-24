@@ -35,6 +35,8 @@ class CFNetBlock:
         self.log(f"Building Model...")
         self.model = cfnet.CFNet(self.max_disparity)
         self.model = torch.nn.DataParallel(self.model)  
+        if torch.cuda.is_available():
+            self.model.cuda()
 
 
     def load(self, model_path):
