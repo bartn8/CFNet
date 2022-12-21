@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import torch
+import gc
 
 import torchvision.transforms as transforms
 
@@ -45,6 +46,7 @@ class CFNetBlock:
     def dispose(self):
         if not self.disposed:
             del self.model
+            gc.collect()
             torch.cuda.empty_cache()
             self.disposed = True
 
